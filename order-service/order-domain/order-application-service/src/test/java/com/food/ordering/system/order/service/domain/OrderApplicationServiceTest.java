@@ -21,7 +21,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import javax.swing.text.html.Option;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -55,7 +54,7 @@ public class OrderApplicationServiceTest {
     private final UUID RESTAURANT_ID = UUID.fromString("d215b5f8-0249-4dc5-89a3-51fd148cfb45");
     private final UUID PRODUCT_ID = UUID.fromString("d215b5f8-0249-4dc5-89a3-51fd148cfb48");
     private final UUID ORDER_ID = UUID.fromString("15a497c1-0f4b-4eff-b9f4-c402c8c07afb");
-    private final UUID SAGA_ID = UUID.fromString("15a497c1-0f4b-4eff-b9f4-c402c8c07afa");
+
     private final BigDecimal PRICE = new BigDecimal("200.00");
 
     @BeforeAll
@@ -151,10 +150,39 @@ public class OrderApplicationServiceTest {
     @Test
     public void testCreateOrder(){
         final CreateOrderResponse createOrderResponse = orderApplicationService.createOrder(createOrderCommand);
-        assertEquals(createOrderResponse.getOrderStatus(), OrderStatus.PENDING);
-        assertEquals(createOrderResponse.getMessage(), "Order Created Successfully");
+        assertEquals(OrderStatus.PENDING, createOrderResponse.getOrderStatus());
+        assertEquals("Order Created Successfully",createOrderResponse.getMessage());
         assertNotNull(createOrderResponse.getOrderTackingId());
     }
+    @Test
+    public void testCreateOrderWithWrongTotalPrice(){
+        final OrderDomainException orderDomainException = assertThrows(OrderDomainException.class,
+                () -> orderApplicationService.createOrder(createOrderCommandWrongPrice)
+        );
+        assertEquals("Total price: 250.00 is not equal to Order items total: 200.00!", orderDomainException.getMessage());
+    }
+    @Test
+    public void testCreateOrderWithWrongProductPrice(){
+        final OrderDomainException orderDomainException = assertThrows(OrderDomainException.class, () ->
+                orderApplicationService.createOrder(createOrderCommandWrongProductPrice));
+        assertEquals("Order item price: 60.00 is not valid for product " + PRODUCT_ID, orderDomainException.getMessage());
+    }
 
+    @Test
+    public void testPassiveRestaurant(){
+        Restaurant restaurantResponse = Restaurant.builder()
+                .restaurantId(new RestaurantId(createOrderCommand.getRestaurantId()))
+                .products(List.of(
+                        new Product(new ProductId(PRODUCT_ID), "product-1", new Money(new BigDecimal("50.00"))),
+                        new Product(new ProductId(PRODUCT_ID), "product-2", new Money(new BigDecimal("50.00")))
+                ))
+                .active(false)
+                .build();
+        when(restaurantRepository.findRestaurantInformation(orderDataMapper.createOrderCommandToRestaurant(createOrderCommand)))
+                .thenReturn(Optional.of(restaurantResponse));
+        final OrderDomainException orderDomainException = assertThrows(OrderDomainException.class, () ->
+                orderApplicationService.createOrder(createOrderCommand));
+        assertEquals("Restaurant with id " + RESTAURANT_ID +" is currently not active!", orderDomainException.getMessage());
+    }
 
 }

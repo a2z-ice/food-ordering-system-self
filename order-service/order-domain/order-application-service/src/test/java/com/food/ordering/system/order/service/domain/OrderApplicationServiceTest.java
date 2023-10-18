@@ -138,6 +138,7 @@ public class OrderApplicationServiceTest {
                        new Product(new ProductId(PRODUCT_ID), "product-1", new Money(new BigDecimal("50.00"))),
                         new Product(new ProductId(PRODUCT_ID), "product-2", new Money(new BigDecimal("50.00")))
                ))
+               .active(true)
                .build();
        Order order = orderDataMapper.createOrderCommandToOrder(createOrderCommand);
        order.setId(new OrderId(ORDER_ID));
@@ -147,5 +148,13 @@ public class OrderApplicationServiceTest {
                .thenReturn(Optional.of(restaurantResponse));
        when(orderRepository.save(any(Order.class))).thenReturn(order);
     }
+    @Test
+    public void testCreateOrder(){
+        final CreateOrderResponse createOrderResponse = orderApplicationService.createOrder(createOrderCommand);
+        assertEquals(createOrderResponse.getOrderStatus(), OrderStatus.PENDING);
+        assertEquals(createOrderResponse.getMessage(), "Order Created Successfully");
+        assertNotNull(createOrderResponse.getOrderTackingId());
+    }
+
 
 }

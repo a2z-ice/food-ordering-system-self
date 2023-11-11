@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
+import javax.annotation.PreDestroy;
 import java.io.Serializable;
 
 @Slf4j
@@ -32,6 +33,12 @@ public class KafkaProducerImpl<K extends Serializable, V extends SpecificRecordB
                     e.getMessage());
             throw new KafkaProducerException("Error on kafka producer with key: " + key + " and message: " + message);
         }
-
+    }
+    @PreDestroy
+    public void close(){
+        if(this.kafkaTemplate != null){
+            log.info("Closing kafka producer!");
+            this.kafkaTemplate.destroy();
+        }
     }
 }
